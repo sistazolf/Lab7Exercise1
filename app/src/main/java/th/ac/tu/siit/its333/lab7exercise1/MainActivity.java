@@ -10,6 +10,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,10 +20,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends ActionBarActivity {
-
+    long oldtime = System.currentTimeMillis();
+    int oid = R.id.btBangkok;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,11 +40,45 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void buttonClicked(View v) {
+
+        long currenttime;
+        long timediff;
         int id = v.getId();
+
         WeatherTask w = new WeatherTask();
+        double timediffToMin;
         switch (id) {
             case R.id.btBangkok:
-                w.execute("http://ict.siit.tu.ac.th/~cholwich/bangkok.json", "Bangkok Weather");
+                currenttime = System.currentTimeMillis();
+                timediff = currenttime - oldtime;
+                timediffToMin = TimeUnit.MILLISECONDS.toMinutes(timediff);
+                if(timediffToMin > 1 || id != oid) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/bangkok.json", "Bangkok Weather");
+                    oldtime = System.currentTimeMillis();
+                    oid=id;
+                }
+                break;
+            case R.id.btNon:
+                currenttime = System.currentTimeMillis();
+                timediff = currenttime - oldtime;
+                timediffToMin = TimeUnit.MILLISECONDS.toMinutes(timediff);
+                if(timediffToMin > 1 || id !=oid) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/nonthaburi.json", "Nonthaburi Weather");
+                    oldtime = System.currentTimeMillis();
+                    oid = id;
+                }
+
+                break;
+            case R.id.btPathum:
+                currenttime = System.currentTimeMillis();
+                timediff = currenttime - oldtime;
+                timediffToMin = TimeUnit.MILLISECONDS.toMinutes(timediff);
+                if(timediffToMin > 1 || id != oid) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/pathumthani.json", "PathumThani Weather");
+                    oldtime = System.currentTimeMillis();
+                    oid = id;
+                }
+
                 break;
         }
     }
@@ -74,6 +111,12 @@ public class MainActivity extends ActionBarActivity {
         String title;
 
         double windSpeed;
+        String whether;
+        Double temperature;
+        Double tempmin;
+        Double tempmax;
+        int humidity;
+
 
         @Override
         protected void onPreExecute() {
@@ -103,8 +146,19 @@ public class MainActivity extends ActionBarActivity {
                     }
                     //Start parsing JSON
                     JSONObject jWeather = new JSONObject(buffer.toString());
+                    JSONArray jwheth = jWeather.getJSONArray("weather");
+                    whether = jwheth.getJSONObject(0).getString("main");
+
                     JSONObject jWind = jWeather.getJSONObject("wind");
                     windSpeed = jWind.getDouble("speed");
+
+                    JSONObject jtemp = jWeather.getJSONObject("main");
+                    temperature = jtemp.getDouble("temp")-273.15;
+                    tempmin = jtemp.getDouble("temp_min")- 273.15;
+                    tempmax = jtemp.getDouble("temp_max")- 273.15;
+                    humidity = jtemp.getInt("humidity");
+
+
                     errorMsg = "";
                     return true;
                 }
@@ -126,7 +180,7 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(Boolean result) {
-            TextView tvTitle, tvWeather, tvWind;
+            TextView tvTitle, tvWeather, tvWind, tvTemp, tvHumid;
             if (pDialog.isShowing()) {
                 pDialog.dismiss();
             }
@@ -134,10 +188,15 @@ public class MainActivity extends ActionBarActivity {
             tvTitle = (TextView)findViewById(R.id.tvTitle);
             tvWeather = (TextView)findViewById(R.id.tvWeather);
             tvWind = (TextView)findViewById(R.id.tvWind);
+            tvTemp = (TextView)findViewById(R.id.tvTemp);
+            tvHumid = (TextView)findViewById(R.id.tvHumid);
 
             if (result) {
+                tvWeather.setText(whether);
                 tvTitle.setText(title);
                 tvWind.setText(String.format("%.1f", windSpeed));
+                tvTemp.setText(String.format("%.1f", temperature)+"(max = "+String.format("%.1f", tempmin)+", min = "+String.format("%.1f", tempmax)+")");
+                tvHumid.setText(String.format("%d%%", humidity));
             }
             else {
                 tvTitle.setText(errorMsg);
